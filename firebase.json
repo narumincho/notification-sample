@@ -1,0 +1,25 @@
+{
+    "hosting": {
+        "public": "hosting_root",
+        "ignore": [
+            "/firebase.json"
+        ],
+        "rewrites": [
+            {
+                "source": "/set_key",
+                "function": "setKey"
+            },
+            {
+                "source": "/get_public_key",
+                "function": "getPublicKey"
+            },
+            {
+                "source": "/send_notification",
+                "function": "sendNotification"
+            }
+        ]
+    },
+    "functions": {
+        "source": "functions_root"
+    }
+}
