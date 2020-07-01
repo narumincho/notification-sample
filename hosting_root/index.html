@@ -2,118 +2,128 @@
 <html lang="ja">
 
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1.0">
-    <title>通知のサンプルページ</title>
-    <link rel="icon" href="/icon.png">
-    <link rel="manifest" href="/manifest.json">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>通知のサンプルページ</title>
+  <link rel="icon" href="/icon.png">
+  <link rel="manifest" href="/manifest.json">
+  <style>
+    #log {
+      overflow-wrap: break-word;
+    }
+
+    button {
+      padding: 16px;
+      cursor: pointer;
+    }
+  </style>
 </head>
 
 <body>
-    <h1>通知のサンプルページ</h1>
-    <div>
-        <label for="title">タイトル</label>
-        <input type="text" id="title">
-    </div>
-    <div>
-        <lable for="body">本文</lable>
-        <textarea type="text" id="body"></textarea>
-    </div>
-    <div>
-        <label for="icon">アイコン画像</label>
-        <input type="text" id="icon">
-    </div>
-    <div>
-        <label for="link">リンク</label>
-        <input type="text" id="link">
-    </div>
-    <button id="send">送信</button>
-    <button id="reset">リセット</button>
-    <div id="log"></div>
-    <script>
-        const logOutput = (text, value) => {
-            const div = document.createElement("div");
-            div.append(text, value);
-            document.querySelector("#log").append(div);
-        }
-        const urlBase64ToUint8Array = base64String => {
-            const padding = "=".repeat((4 - base64String.length % 4) % 4);
-            const base64 = (base64String + padding).replace(/\-/g, "+").replace(/_/g, "/");
-            const rawData = window.atob(base64);
-            const outputArray = new Uint8Array(rawData.length);
-            for (let i = 0; i < rawData.length; i++) {
-                outputArray[i] = rawData.charCodeAt(i);
-            }
-            return outputArray;
-        }
+  <h1>通知のサンプルページ</h1>
+  <div>
+    <label for="title">タイトル</label>
+    <input type="text" id="title">
+  </div>
+  <div>
+    <lable for="body">本文</lable>
+    <textarea type="text" id="body"></textarea>
+  </div>
+  <div>
+    <label for="icon">アイコン画像のURL</label>
+    <input type="text" id="icon">
+  </div>
+  <div>
+    <label for="link">リンク</label>
+    <input type="text" id="link">
+  </div>
+  <button id="send">送信</button>
+  <button id="reset">リセット</button>
+  <div id="log"></div>
+  <script>
+    const logOutput = (text, value) => {
+      const div = document.createElement("div");
+      div.append(text, value);
+      document.querySelector("#log").append(div);
+    }
+    const urlBase64ToUint8Array = base64String => {
+      const padding = "=".repeat((4 - base64String.length % 4) % 4);
+      const base64 = (base64String + padding).replace(/\-/g, "+").replace(/_/g, "/");
+      const rawData = window.atob(base64);
+      const outputArray = new Uint8Array(rawData.length);
+      for (let i = 0; i < rawData.length; i++) {
+        outputArray[i] = rawData.charCodeAt(i);
+      }
+      return outputArray;
+    }
 
-        const sendNotification = subscription => {
-            logOutput("通知を送ります");
-            logOutput("endpoint", subscription.endpoint);
-            logOutput("auth", subscription.toJSON().keys.auth);
-            logOutput("p256dh", subscription.toJSON().keys.p256dh);
-            fetch(
-                "/send_notification",
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        endpoint: subscription.endpoint,
-                        auth: subscription.toJSON().keys.auth,
-                        p256dh: subscription.toJSON().keys.p256dh,
-                        title: document.querySelector("#title").value,
-                        body: document.querySelector("#body").value,
-                        icon: document.querySelector("#icon").value,
-                        link: document.querySelector("#link").value,
-                    })
-                }
-            )
+    const sendNotification = subscription => {
+      logOutput("通知を送ります");
+      logOutput("endpoint", subscription.endpoint);
+      logOutput("auth", subscription.toJSON().keys.auth);
+      logOutput("p256dh", subscription.toJSON().keys.p256dh);
+      fetch(
+        "/send_notification",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            endpoint: subscription.endpoint,
+            auth: subscription.toJSON().keys.auth,
+            p256dh: subscription.toJSON().keys.p256dh,
+            title: document.querySelector("#title").value,
+            body: document.querySelector("#body").value,
+            icon: document.querySelector("#icon").value,
+            link: document.querySelector("#link").value,
+          })
         }
+      )
+    }
 
-        navigator.serviceWorker.register(
-            "/serviceworker.js",
-            { scope: "/" }
-        ).then(registration => {
-            logOutput("serviceworkerを登録した");
+    navigator.serviceWorker.register(
+      "/serviceworker.js",
+      { scope: "/" }
+    ).then(registration => {
+      logOutput("serviceworkerを登録した");
 
-            document.querySelector("#send").addEventListener("click", (e) => {
-                registration.pushManager.getSubscription().then(subscription => {
-                    if (subscription === null) {
-                        logOutput("通知を受け取るように言う");
-                        fetch("/get_public_key").then(publicKeyResponse =>
-                            publicKeyResponse.text()
-                        ).then(publicKey => {
-                            logOutput("サーバーから公開キーを取得" + publicKey);
-                            return registration.pushManager.subscribe({
-                                userVisibleOnly: true,
-                                applicationServerKey: urlBase64ToUint8Array(publicKey)
-                            });
-                        }).then(subscription => {
-                            logOutput("許可をもらえた!");
-                            sendNotification(subscription);
-                        }, e => {
-                            logOutput("許可をもらえなかった…残念", e);
-                        })
-                    } else {
-                        logOutput("通知の許可はとってある");
-                        sendNotification(subscription);
-                    }
-                });
-            });
-        }).catch(e => {
-            logOutput("serviceworkerを登録することができなかった。通知機能を使うことはできない");
+      document.querySelector("#send").addEventListener("click", (e) => {
+        registration.pushManager.getSubscription().then(subscription => {
+          if (subscription === null) {
+            logOutput("通知を受け取るように言う");
+            fetch("/get_public_key").then(publicKeyResponse =>
+              publicKeyResponse.text()
+            ).then(publicKey => {
+              logOutput("サーバーから公開キーを取得" + publicKey);
+              return registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(publicKey)
+              });
+            }).then(subscription => {
+              logOutput("許可をもらえた!");
+              sendNotification(subscription);
+            }, e => {
+              logOutput("許可をもらえなかった…残念", e);
+            })
+          } else {
+            logOutput("通知の許可はとってある");
+            sendNotification(subscription);
+          }
         });
+      });
+    }).catch(e => {
+      logOutput("serviceworkerを登録することができなかった。通知機能を使うことはできない");
+    });
 
-        document.querySelector("#reset").addEventListener("click", (e) => {
-            fetch("/set_key").then(response =>
-                response.text()
-            ).then(text =>
-                logOutput("リセット" + text)
-            );
-        });
-    </script>
+    document.querySelector("#reset").addEventListener("click", (e) => {
+      fetch("/set_key").then(response =>
+        response.text()
+      ).then(text =>
+        logOutput("リセット" + text)
+      );
+    });
+  </script>
 </body>
 
 </html>
