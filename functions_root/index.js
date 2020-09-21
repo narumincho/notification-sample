@@ -4,7 +4,6 @@ const admin = require("firebase-admin");
 const functions = require("firebase-functions");
 const webpush = require("web-push");
 
-// admin.initializeApp(functions.config().firebase);
 admin.initializeApp();
 
 const db = admin.firestore();
@@ -38,14 +37,8 @@ module.exports = {
   sendNotification: functions.https.onRequest((request, response) => {
     dbRef.get().then(async (doc) => {
       const vapidKeys = doc.data();
-      console.log(
-        "Firebaseサーバー → pushサーバー: 公開キー",
-        vapidKeys.publicKey
-      );
-      console.log(
-        "Firebaseサーバー → pushサーバー: 秘密キー",
-        vapidKeys.privateKey
-      );
+      console.log("pushサーバー endpoint: ", request.body.endpoint);
+      console.log("通知本文: ", request.body.body);
 
       await webpush.sendNotification(
         {
